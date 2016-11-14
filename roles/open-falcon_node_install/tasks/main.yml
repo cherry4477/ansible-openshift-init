@@ -1,0 +1,20 @@
+- name: copy package to host
+  copy: src=agent_node.tar.gz dest=/root/ mode=755
+
+- name: check open-falcon state
+  shell: netstat -ntlp | grep falcon | grep 1988 | wc -l
+  register: result
+
+- name:  release compression  tar.gz
+  shell: tar -xf /usr/local/agent_node.tar.gz -C /root/
+  when: result.stdout == "0"
+
+- name: start agent
+  raw: cd /root/agent && ./control restart
+  when: result.stdout == "0"
+
+- name: crontab
+  lineinfile: dest=/etc/crontab line={{ item }} backup=yes
+  with_items:
+  - "30 1 * * * root find /var/log/ -mtime +3 -name \"message*\" -exec rm -f {} \;"
+  - "* * * * * root sh /root/agent/plugin/shell/monitor_agent.sh"
